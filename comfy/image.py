@@ -77,6 +77,7 @@ def download_checkpoints():
 # Add plugins to PLUGINS, a list of dictionaries with two keys:
 # `url` for the github url and an optional `requirements` for the name of a requirements.txt to pip install (remove this key if there is none for the plugin).
 PLUGINS = [
+    {"url": "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes"},
     {
         "url": "https://github.com/Gourieff/comfyui-reactor-node",
         "requirements": "requirements.txt",
@@ -89,7 +90,6 @@ PLUGINS = [
         "url": "https://github.com/jags111/efficiency-nodes-comfyui",
         "requirements": "requirements.txt",
     },
-    {"url": "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes"},
 ]
 
 
@@ -107,48 +107,43 @@ def download_plugins():
             print(f"Error cloning repository: {e.stderr}")
         if plugin.get("requirements"):
             pip_command = f"cd /root/custom_nodes/{name} && pip install -r {plugin['requirements']}"
-        try:
-            subprocess.run(pip_command, shell=True, check=True)
-            if name == "comfyui-reactor-node":
-                process = subprocess.Popen(
-                    ["python", "./custom_nodes/comfyui-reactor-node/install.py"]
-                )
-                process.wait()
-                retcode = process.returncode
-
-                if retcode != 0:
-                    raise RuntimeError(
-                        f"reactor's install.py exited unexpectedly with code {retcode}"
+            try:
+                subprocess.run(pip_command, shell=True, check=True)
+                if name == "comfyui-reactor-node":
+                    process = subprocess.Popen(
+                        ["python", "./custom_nodes/comfyui-reactor-node/install.py"]
                     )
+                    process.wait()
+                    retcode = process.returncode
 
-            print(f"Requirements for {url} installed successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"Error installing requirements: {e.stderr}")
+                    if retcode != 0:
+                        raise RuntimeError(
+                            f"reactor's install.py exited unexpectedly with code {retcode}"
+                        )
+
+                print(f"Requirements for {url} installed successfully")
+            except subprocess.CalledProcessError as e:
+                print(f"Error installing requirements: {e.stderr}")
 
 
-cuda_version = "12.1.1"
+cuda_version = "12.4.0"
 flavor = "devel"
 os = "ubuntu22.04"
 tag = f"{cuda_version}-{flavor}-{os}"
-comfyui_commit_sha = "a88b0ebc2d2f933c94e42aa689c42e836eedaf3c"
+comfyui_commit_sha = "4ca9b9cc29fefaa899cba67d61a8252ae9f16c0d"
 
 gpu = "h100"
 
 image = (
-    Image.from_registry(f"nvidia/cuda:{tag}", add_python="3.10")
-    .run_commands("gcc --version")
+    Image.from_registry(f"nvidia/cuda:{tag}", add_python="3.11")
     .apt_install("git", "libgl1-mesa-glx", "libglib2.0-0", "unzip", "clang")
-    # Here we place the latest ComfyUI repository code into /root.
-    # Because /root is almost empty, but not entirely empty
-    # as it contains this comfy_ui.py script, `git clone` won't work.
-    # As a workaround we `init` inside the non-empty directory, then `checkout`.
     .run_commands(
         "cd /root && git init .",
         "cd /root && git remote add --fetch origin https://github.com/comfyanonymous/ComfyUI",
         f"cd /root && git checkout {comfyui_commit_sha}",
     )
     .run_commands(
-        "cd /root && pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu121",
+        "cd /root && pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu124",
         "cd /root && pip install -r requirements.txt",
         gpu=gpu,
     )

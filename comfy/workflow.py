@@ -36,7 +36,6 @@ def run_python_workflow(item: Dict):
         CLIPTextEncode,
     )
 
-    result = None
     with torch.inference_mode():
         loadimage = LoadImage()
         loadimage_1 = loadimage.load_image(image=item["filename"])
@@ -144,6 +143,4 @@ def run_python_workflow(item: Dict):
             images=get_value_at_index(reactorfaceswap_21, 0),
         )
 
-        result = saveimage_16
-
-    return result
+        return saveimage_16
