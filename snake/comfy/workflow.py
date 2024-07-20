@@ -1,26 +1,6 @@
-import pathlib
 import random
-from typing import Any, Dict, Mapping, Sequence, Union
-
-
-def get_value_at_index(obj: Union[Sequence, Mapping], index: int) -> Any:
-    try:
-        return obj[index]
-    except KeyError:
-        return obj["result"][index]
-
-
-def download_image(url: str, filename: str, save_path="input/"):
-    import requests
-
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        pathlib.Path(save_path + filename).write_bytes(response.content)
-        print(f"{url} image successfully downloaded")
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error downloading {url} image: {e}")
+from typing import Dict
+from snake.comfy.utils import get_value_at_index
 
 
 def run_python_workflow(item: Dict):

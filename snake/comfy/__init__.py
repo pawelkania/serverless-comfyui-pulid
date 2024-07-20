@@ -2,26 +2,21 @@ import pathlib
 from typing import Dict
 from modal import App, enter, method
 
-from .image import image, gpu
-from .workflow import run_python_workflow, download_image
+from snake.comfy.image import image, gpu
+from snake.comfy.workflow import run_python_workflow
+from snake.comfy.utils import download_image
 
-app = App(name="comfy-workflow-app")
+comfy = App(name="comfy")
 
 
-@app.cls(image=image, gpu=gpu, container_idle_timeout=300)
+@comfy.cls(image=image, gpu=gpu, container_idle_timeout=300)
 class ComfyUI:
-    def prepare(self):
-        from nodes import init_extra_nodes
-
-        init_extra_nodes()
 
     @enter()
     def on_enter(self):
-        self.prepare()
+        from nodes import init_extra_nodes
 
-    @method()
-    def warm_up(self):
-        self.prepare()
+        init_extra_nodes()
 
     @method()
     def run(self, item: Dict):
@@ -36,7 +31,7 @@ class ComfyUI:
         return bytes
 
 
-@app.local_entrypoint()
+@comfy.local_entrypoint()
 def main() -> None:
     values = {
         "filename": "2",

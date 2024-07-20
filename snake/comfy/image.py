@@ -1,6 +1,5 @@
 from modal import Image
-
-import pathlib
+from snake.comfy.utils import download_checkpoints, download_plugins
 
 ## Define container image
 MODELS = [
@@ -51,29 +50,6 @@ MODELS = [
 ]
 
 
-def download_checkpoints():
-    import httpx
-    from tqdm import tqdm
-
-    for model in MODELS:
-        url = model["url"]
-        local_filename = url.split("/")[-1]
-        local_filepath = pathlib.Path(model["directory"], local_filename)
-        local_filepath.parent.mkdir(parents=True, exist_ok=True)
-
-        print(f"downloading {url} ...")
-        with httpx.stream("GET", url, follow_redirects=True) as stream:
-            total = int(stream.headers["Content-Length"])
-            with open(local_filepath, "wb") as f, tqdm(
-                total=total, unit_scale=True, unit_divisor=1024, unit="B"
-            ) as progress:
-                num_bytes_downloaded = stream.num_bytes_downloaded
-                for data in stream.iter_bytes():
-                    f.write(data)
-                    progress.update(stream.num_bytes_downloaded - num_bytes_downloaded)
-                    num_bytes_downloaded = stream.num_bytes_downloaded
-
-
 # Add plugins to PLUGINS, a list of dictionaries with two keys:
 # `url` for the github url and an optional `requirements` for the name of a requirements.txt to pip install (remove this key if there is none for the plugin).
 PLUGINS = [
@@ -91,40 +67,6 @@ PLUGINS = [
         "requirements": "requirements.txt",
     },
 ]
-
-
-def download_plugins():
-    import subprocess
-
-    for plugin in PLUGINS:
-        url = plugin["url"]
-        name = url.split("/")[-1]
-        command = f"cd /root/custom_nodes && git clone {url}"
-        try:
-            subprocess.run(command, shell=True, check=True)
-            print(f"Repository {url} cloned successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"Error cloning repository: {e.stderr}")
-        if plugin.get("requirements"):
-            pip_command = f"cd /root/custom_nodes/{name} && pip install -r {plugin['requirements']}"
-            try:
-                subprocess.run(pip_command, shell=True, check=True)
-                if name == "comfyui-reactor-node":
-                    process = subprocess.Popen(
-                        ["python", "./custom_nodes/comfyui-reactor-node/install.py"]
-                    )
-                    process.wait()
-                    retcode = process.returncode
-
-                    if retcode != 0:
-                        raise RuntimeError(
-                            f"reactor's install.py exited unexpectedly with code {retcode}"
-                        )
-
-                print(f"Requirements for {url} installed successfully")
-            except subprocess.CalledProcessError as e:
-                print(f"Error installing requirements: {e.stderr}")
-
 
 cuda_version = "12.4.0"
 flavor = "devel"
