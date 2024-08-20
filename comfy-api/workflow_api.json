@@ -88,7 +88,7 @@
 	},
 	"59": {
 		"inputs": {
-			"ipadapter_file": "ip-adapter_sdxl.safetensors"
+			"ipadapter_file": "ip-adapter-plus_sdxl_vit-h.safetensors"
 		},
 		"class_type": "IPAdapterModelLoader",
 		"_meta": {
