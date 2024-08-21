@@ -20,7 +20,7 @@
 	},
 	"9": {
 		"inputs": {
-			"text": "portrait posing 1920s college yearbook photo, raw image,low contrast, (plain contrast background), in the 1920s, black and white analog image style, wearing college outfit from the 20s (grainy, 35mm, broken images, nostalgic feel, vignette effect )",
+			"text": "",
 			"clip": ["5", 1]
 		},
 		"class_type": "CLIPTextEncode",
