@@ -6,6 +6,7 @@ import random
 import os
 import uuid
 import time
+import base64
 
 from .firebase import FirebaseAdmin, ResourceNotFound
 from .container import image, gpu
@@ -22,7 +23,7 @@ def connect_to_websocket():
     ws = websocket.WebSocket()
     while True:
         try:
-            ws.connect(f"ws://{comfyui_server_address}/ws?clientId={client_id}")
+            ws.connect(f"ws://0.0.0.0:8189/ws?clientId={client_id}")
             print("Connection established!")
             break
         except ConnectionRefusedError:
@@ -41,17 +42,23 @@ def event_stream(workflow: dict, prompt_id: str):
         if isinstance(out, str):
             message = json.loads(out)
 
-            data = message["data"]
             if message["type"] == "executing":
-                if data["prompt_id"] == prompt_id:
+                data = message["data"]
+
+                if data.get("prompt_id") and data.get("prompt_id") == prompt_id:
                     if data["node"] is None:
-                        yield f"data: {{'status': 'completed'}}\n\n"
                         break
                     else:
                         current_node = data["node"]
-            if message["type"] == "progress":
+
+            elif message["type"] == "progress":
                 data = message["data"]
-                if data["prompt_id"] == prompt_id and data["node"] == 11:
+
+                if (
+                    data.get("prompt_id")
+                    and data.get("prompt_id") == prompt_id
+                    and data["node"] == "11"
+                ):
                     progress = data["value"] - data["max"]
                     yield f"data: {{'status': 'pending', 'progress': {progress}}}\n\n"
         else:
@@ -62,7 +69,8 @@ def event_stream(workflow: dict, prompt_id: str):
                     )  # parse out header of the image byte string
 
     if output_images:
-        yield f"data: {{'status': 'image', 'bytes': '{output_images[0].decode()}'}}\n\n"
+        result = base64.b64encode(output_images[0]).decode()
+        yield f"data: {{'status': 'executed', 'data': {result}}}\n\n"
 
 
 @app.cls(
@@ -91,7 +99,7 @@ class ComfyUI:
         self._run_comfyui_server()
 
     @modal.asgi_app()
-    def server():
+    def server(self):
         from fastapi import FastAPI, HTTPException, Request
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import StreamingResponse
@@ -115,17 +123,18 @@ class ComfyUI:
             (pathlib.Path(__file__).parent / "workflow_api.json").read_text()
         )
 
-        @fastapi.middleware("http")
-        async def check_bearer_token(request: Request, call_next):
-            authorization = request.headers.get("Authorization")
-            if not authorization or not authorization.startswith("Bearer "):
-                raise HTTPException(status_code=401, detail="Bearer token required")
+        # TODO: add authorization
+        # @fastapi.middleware("http")
+        # async def check_bearer_token(request: Request, call_next):
+        #     authorization = request.headers.get("authorization")
+        #     if not authorization or not authorization.startswith("Bearer "):
+        #         raise HTTPException(status_code=401, detail="Bearer token required")
 
-            token = authorization.split(" ")[1]
-            if not admin.verify_token(token):
-                raise HTTPException(status_code=401, detail="Invalid or expired token")
+        #     token = authorization.split(" ")[1]
+        #     if not admin.verify_token(token):
+        #         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-            return await call_next(request)
+        #     return await call_next(request)
 
         @fastapi.get("/blob/{blob_name:path}")
         def get_presigned_url(blob_name: str):
@@ -134,9 +143,17 @@ class ComfyUI:
         @fastapi.post("/prompt")
         def post_prompt(body: PostPromptModel):
             import urllib
+            import requests
 
             try:
-                bytes = admin.get_bytes(f"{body.session_id}/before")
+                requests.get("http://0.0.0.0:8189/prompt")
+            except (requests.ConnectionError, requests.Timeout) as e:
+                raise HTTPException(status_code=425, detail="Server not reachable yet")
+            except:
+                pass
+
+            try:
+                bytes = admin.download_bytes(f"{body.session_id}/before")
                 pathlib.Path(f"/root/input/{body.session_id}").write_bytes(bytes)
                 print(f"{body.session_id}/before image successfully downloaded")
             except ResourceNotFound as e:
@@ -151,9 +168,7 @@ class ComfyUI:
             data = json.dumps({"prompt": workflow_data, "client_id": client_id}).encode(
                 "utf-8"
             )
-            response = urllib.request.Request(
-                f"http://{comfyui_server_address}/prompt", data=data
-            )
+            response = urllib.request.Request(f"http://0.0.0.0:8189/prompt", data=data)
             result = json.loads(urllib.request.urlopen(response).read())
             print(f"Queued workflow {result['prompt_id']}")
 

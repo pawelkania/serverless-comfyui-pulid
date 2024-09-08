@@ -27,8 +27,8 @@ image = (
         "websocket-client",
         "firebase_admin",
     )
-    .run_function(download_checkpoints)
     .run_function(download_nodes, gpu=gpu)
+    .run_function(download_checkpoints)
     .run_commands("pip install --upgrade fastapi")
     .run_commands(
         "cd /root/models/insightface && gdown https://drive.google.com/uc?id=1qXsQJ8ZT42_xSmWIYy85IcidpiZudOCB -O buffalo_l.zip",
