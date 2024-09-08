@@ -15,6 +15,7 @@ app = modal.App("comfy-api")
 client_id = str(uuid.uuid4())
 comfyui_server_address = "127.0.0.1:8189"
 
+
 def connect_to_websocket():
     import websocket
 
@@ -28,6 +29,7 @@ def connect_to_websocket():
             print("Server still standing up...")
             time.sleep(1)
     return ws
+
 
 def event_stream(workflow: dict, prompt_id: str):
     ws = connect_to_websocket()
@@ -50,14 +52,18 @@ def event_stream(workflow: dict, prompt_id: str):
             if message["type"] == "progress":
                 data = message["data"]
                 if data["prompt_id"] == prompt_id and data["node"] == 11:
-                    yield f"data: {{'status': 'pending', 'progress': {data["value"] - data["max"]}}}\n\n"
+                    progress = data["value"] - data["max"]
+                    yield f"data: {{'status': 'pending', 'progress': {progress}}}\n\n"
         else:
             if workflow.get(current_node):
                 if workflow[current_node].get("class_type") == "SaveImageWebsocket":
-                    output_images.append(out[8:])  # parse out header of the image byte string
+                    output_images.append(
+                        out[8:]
+                    )  # parse out header of the image byte string
 
     if output_images:
         yield f"data: {{'status': 'image', 'bytes': '{output_images[0].decode()}'}}\n\n"
+
 
 @app.cls(
     gpu=gpu,
@@ -115,7 +121,7 @@ class ComfyUI:
             if not authorization or not authorization.startswith("Bearer "):
                 raise HTTPException(status_code=401, detail="Bearer token required")
 
-            token = authorization.split(" ")[1]  
+            token = authorization.split(" ")[1]
             if not admin.verify_token(token):
                 raise HTTPException(status_code=401, detail="Invalid or expired token")
 
@@ -126,7 +132,7 @@ class ComfyUI:
             return admin.sign_blob_url(blob_name, minutes=30)
 
         @fastapi.post("/prompt")
-        def prompt_post(body: PostPromptModel):
+        def post_prompt(body: PostPromptModel):
             import urllib
 
             try:
@@ -142,19 +148,21 @@ class ComfyUI:
             workflow_data["1"]["inputs"]["image"] = body.session_id
             workflow_data["9"]["inputs"]["text"] += body.prompt
 
-            data = json.dumps(
-                {"prompt": workflow_data, "client_id": client_id}
-            ).encode("utf-8")
+            data = json.dumps({"prompt": workflow_data, "client_id": client_id}).encode(
+                "utf-8"
+            )
             response = urllib.request.Request(
                 f"http://{comfyui_server_address}/prompt", data=data
             )
             result = json.loads(urllib.request.urlopen(response).read())
             print(f"Queued workflow {result['prompt_id']}")
 
-            return result['prompt_id']
+            return result["prompt_id"]
 
         @fastapi.get("/prompt/{prompt_id}")
         def get_prompt(prompt_id: str):
             return StreamingResponse(
                 event_stream(workflow_json, prompt_id), media_type="text/event-stream"
             )
+
+        return fastapi

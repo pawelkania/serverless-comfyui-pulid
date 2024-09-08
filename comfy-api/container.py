@@ -17,7 +17,7 @@ image = (
     .run_commands(
         "cd /root && pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu121",
         "cd /root && pip install -r requirements.txt",
-        gpu,
+        gpu=gpu,
     )
     .pip_install(
         "httpx",
@@ -28,7 +28,7 @@ image = (
         "firebase_admin",
     )
     .run_function(download_checkpoints)
-    .run_function(download_nodes, gpu)
+    .run_function(download_nodes, gpu=gpu)
     .run_commands("pip install --upgrade fastapi")
     .run_commands(
         "cd /root/models/insightface && gdown https://drive.google.com/uc?id=1qXsQJ8ZT42_xSmWIYy85IcidpiZudOCB -O buffalo_l.zip",

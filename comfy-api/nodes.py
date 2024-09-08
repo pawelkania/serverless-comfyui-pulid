@@ -23,8 +23,7 @@ def download_nodes():
     import subprocess
     import os
 
-    for node in NODES:
-        url = node["url"]
+    for url in NODES:
         name = url.split("/")[-1]
         command = f"cd /root/custom_nodes && git clone {url}"
 
@@ -36,9 +35,7 @@ def download_nodes():
 
         if os.path.isfile(f"/root/custom_nodes/{name}/requirements.txt"):
             print("Installing custom node requirements...")
-            pip_command = (
-                f"cd /root/custom_nodes/{name} && pip install -r {node['requirements']}"
-            )
+            pip_command = f"pip install -r /root/custom_nodes/{name}/requirements.txt"
         try:
             subprocess.run(pip_command, shell=True, check=True)
             if os.path.isfile(f"/root/custom_nodes/{name}/install.py"):
