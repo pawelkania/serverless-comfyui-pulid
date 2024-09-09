@@ -60,7 +60,7 @@ def event_stream(workflow: dict, prompt_id: str):
                     and data["node"] == "11"
                 ):
                     progress = data["value"] - data["max"]
-                    yield f"data: {{'status': 'pending', 'progress': {progress}}}\n\n"
+                    yield f'data: {{"status": "pending", "progress": {progress}}}\n\n'
         else:
             if workflow.get(current_node):
                 if workflow[current_node].get("class_type") == "SaveImageWebsocket":
@@ -70,7 +70,7 @@ def event_stream(workflow: dict, prompt_id: str):
 
     if output_images:
         result = base64.b64encode(output_images[0]).decode()
-        yield f"data: {{'status': 'executed', 'data': {result}}}\n\n"
+        yield f'data: {{"status": "executed", "data": "{result}"}}\n\n'
 
 
 @app.cls(
@@ -84,6 +84,8 @@ def event_stream(workflow: dict, prompt_id: str):
     ],
     secrets=[modal.Secret.from_name("googlecloud-secret")],
     container_idle_timeout=60 * 15,  # 15 minutes
+    timeout=60 * 60,  # 1 hour
+    allow_concurrent_inputs=10,
 )
 class ComfyUI:
     def _run_comfyui_server(self, port=8188):
