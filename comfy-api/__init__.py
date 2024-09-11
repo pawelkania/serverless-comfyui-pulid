@@ -5,106 +5,39 @@ import modal
 import random
 import os
 import uuid
-import time
-import base64
 
 from .firebase import FirebaseAdmin, ResourceNotFound
 from .container import image, gpu
 
 app = modal.App("comfy-api")
 
-client_id = str(uuid.uuid4())
-comfyui_server_address = "127.0.0.1:8189"
-
-
-def connect_to_websocket():
-    import websocket
-
-    ws = websocket.WebSocket()
-    while True:
-        try:
-            ws.connect(f"ws://0.0.0.0:8189/ws?clientId={client_id}")
-            print("Connection established!")
-            break
-        except ConnectionRefusedError:
-            print("Server still standing up...")
-            time.sleep(1)
-    return ws
-
-
-def event_stream(workflow: dict, prompt_id: str):
-    ws = connect_to_websocket()
-
-    output_images = []
-    current_node = ""
-    while True:
-        out = ws.recv()
-        if isinstance(out, str):
-            message = json.loads(out)
-
-            if message["type"] == "executing":
-                data = message["data"]
-
-                if data.get("prompt_id") and data.get("prompt_id") == prompt_id:
-                    if data["node"] is None:
-                        break
-                    else:
-                        current_node = data["node"]
-
-            elif message["type"] == "progress":
-                data = message["data"]
-
-                if (
-                    data.get("prompt_id")
-                    and data.get("prompt_id") == prompt_id
-                    and data["node"] == "11"
-                ):
-                    progress = data["value"] - data["max"]
-                    yield f'data: {{"status": "pending", "progress": {progress}}}\n\n'
-        else:
-            if workflow.get(current_node):
-                if workflow[current_node].get("class_type") == "SaveImageWebsocket":
-                    output_images.append(
-                        out[8:]
-                    )  # parse out header of the image byte string
-
-    if output_images:
-        result = base64.b64encode(output_images[0]).decode()
-        yield f'data: {{"status": "executed", "data": "{result}"}}\n\n'
-
 
 @app.cls(
     gpu=gpu,
     image=image,
+    container_idle_timeout=60 * 15,  # 15 minutes
+    timeout=60 * 60,  # 1 hour
+    secrets=[modal.Secret.from_name("googlecloud-secret")],
     mounts=[
         modal.Mount.from_local_file(
             local_path=(pathlib.Path(__file__).parent / "workflow_api.json"),
             remote_path="/root/workflow_api.json",
         ),
     ],
-    secrets=[modal.Secret.from_name("googlecloud-secret")],
-    container_idle_timeout=60 * 15,  # 15 minutes
-    timeout=60 * 60,  # 1 hour
-    allow_concurrent_inputs=10,
 )
-class ComfyUI:
+class Comfy:
     def _run_comfyui_server(self, port=8188):
-        cmd = f"python main.py --listen --port {port}"
+        cmd = f"python main.py --listen 0.0.0.0 --port {port}"
         subprocess.Popen(cmd, shell=True)
 
     @modal.enter()
     def prepare(self):
         self._run_comfyui_server(port=8189)
 
-    @modal.web_server(8188, startup_timeout=300)
-    def ui(self):
-        self._run_comfyui_server()
-
     @modal.asgi_app()
-    def server(self):
-        from fastapi import FastAPI, HTTPException, Request
+    def api(self):
+        from fastapi import FastAPI, HTTPException, WebSocket
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import StreamingResponse
         from pydantic import BaseModel
 
         class PostPromptModel(BaseModel):
@@ -124,6 +57,8 @@ class ComfyUI:
         workflow_json = json.loads(
             (pathlib.Path(__file__).parent / "workflow_api.json").read_text()
         )
+
+        websocket_client_id = str(uuid.uuid4())
 
         # TODO: add authorization
         # @fastapi.middleware("http")
@@ -167,19 +102,58 @@ class ComfyUI:
             workflow_data["1"]["inputs"]["image"] = body.session_id
             workflow_data["9"]["inputs"]["text"] += body.prompt
 
-            data = json.dumps({"prompt": workflow_data, "client_id": client_id}).encode(
-                "utf-8"
-            )
+            data = json.dumps(
+                {"prompt": workflow_data, "client_id": websocket_client_id}
+            ).encode("utf-8")
             response = urllib.request.Request(f"http://0.0.0.0:8189/prompt", data=data)
             result = json.loads(urllib.request.urlopen(response).read())
             print(f"Queued workflow {result['prompt_id']}")
 
             return result["prompt_id"]
 
-        @fastapi.get("/prompt/{prompt_id}")
-        def get_prompt(prompt_id: str):
-            return StreamingResponse(
-                event_stream(workflow_json, prompt_id), media_type="text/event-stream"
-            )
+        @fastapi.websocket("/prompt")
+        async def proxy_websocket(websocket: WebSocket):
+            import websockets
+            import asyncio
+
+            await websocket.accept()
+
+            try:
+                async with websockets.connect(
+                    f"ws://0.0.0.0:8189/ws?clientId={websocket_client_id}",
+                    max_size=1048576 * 3,
+                ) as target_ws:
+
+                    async def receive_from_client():
+                        try:
+                            while True:
+                                data = await websocket.receive_text()
+                                await target_ws.send(data)
+                        except Exception as e:
+                            print(f"Client disconnected: {e}")
+                            await target_ws.close()
+
+                    async def send_to_client():
+                        try:
+                            while True:
+                                out = await target_ws.recv()
+                                if isinstance(out, str):
+                                    data = json.loads(out)
+                                    await websocket.send_json(data)
+                                else:
+                                    await websocket.send_bytes(out)
+                        except Exception as e:
+                            print(f"Server disconnected or error: {e}")
+                            await websocket.close()
+
+                    receive_task = asyncio.create_task(receive_from_client())
+                    send_task = asyncio.create_task(send_to_client())
+
+                    await asyncio.wait(
+                        [receive_task, send_task], return_when=asyncio.FIRST_COMPLETED
+                    )
+            except Exception as e:
+                await websocket.close()
+                print(f"WebSocket connection error: {e}")
 
         return fastapi
