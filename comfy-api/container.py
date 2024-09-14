@@ -34,5 +34,4 @@ image = (
         "cd /root/models/insightface && gdown https://drive.google.com/uc?id=1qXsQJ8ZT42_xSmWIYy85IcidpiZudOCB -O buffalo_l.zip",
         "cd /root/models/insightface && unzip buffalo_l.zip -d models",
     )
-    .pip_install("websockets")
 )

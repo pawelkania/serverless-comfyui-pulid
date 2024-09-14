@@ -1,15 +1,25 @@
 import pathlib
 import json
 import subprocess
+import time
 import modal
 import random
 import os
-import uuid
 
-from .firebase import FirebaseAdmin, ResourceNotFound
 from .container import image, gpu
 
 app = modal.App("comfy-api")
+
+from pydantic import BaseModel
+
+
+class InferModel(BaseModel):
+    session_id: str
+    prompt: str
+
+
+with image.imports():
+    from firebase_admin import credentials, initialize_app, storage, firestore
 
 
 @app.cls(
@@ -25,7 +35,21 @@ app = modal.App("comfy-api")
         ),
     ],
 )
-class Comfy:
+class ComfyUI:
+    def __init__(self):
+        service_account_info = json.loads(os.environ["SERVICE_ACCOUNT_JSON"])
+        cred = credentials.Certificate(service_account_info)
+        firebase = initialize_app(
+            cred,
+            options={"storageBucket": "wesmile-photobooth.appspot.com"},
+        )
+        self.bucket = storage.bucket(app=firebase)
+        self.db = firestore.client(app=firebase)
+
+        self.workflow_json = json.loads(
+            (pathlib.Path(__file__).parent / "workflow_api.json").read_text()
+        )
+
     def _run_comfyui_server(self, port=8188):
         cmd = f"python main.py --listen 0.0.0.0 --port {port}"
         subprocess.Popen(cmd, shell=True)
@@ -34,126 +58,150 @@ class Comfy:
     def prepare(self):
         self._run_comfyui_server(port=8189)
 
-    @modal.asgi_app()
-    def api(self):
-        from fastapi import FastAPI, HTTPException, WebSocket
-        from fastapi.middleware.cors import CORSMiddleware
-        from pydantic import BaseModel
+    @modal.method()
+    def infer(self, input: InferModel):
+        import urllib
+        import base64
+        import websocket
+        import requests
 
-        class PostPromptModel(BaseModel):
-            session_id: str
-            prompt: str
-
-        fastapi = FastAPI()
-        fastapi.add_middleware(
-            CORSMiddleware,
-            allow_credentials=False,
-            allow_methods=["GET", "POST"],
-            allow_headers=["*"],
-            allow_origins=["*"],
-        )
-
-        admin = FirebaseAdmin(os.environ["SERVICE_ACCOUNT_JSON"])
-        workflow_json = json.loads(
-            (pathlib.Path(__file__).parent / "workflow_api.json").read_text()
-        )
-
-        websocket_client_id = str(uuid.uuid4())
-
-        # TODO: add authorization
-        # @fastapi.middleware("http")
-        # async def check_bearer_token(request: Request, call_next):
-        #     authorization = request.headers.get("authorization")
-        #     if not authorization or not authorization.startswith("Bearer "):
-        #         raise HTTPException(status_code=401, detail="Bearer token required")
-
-        #     token = authorization.split(" ")[1]
-        #     if not admin.verify_token(token):
-        #         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-        #     return await call_next(request)
-
-        @fastapi.get("/blob/{blob_name:path}")
-        def get_presigned_url(blob_name: str):
-            return admin.sign_blob_url(blob_name, minutes=30)
-
-        @fastapi.post("/prompt")
-        def post_prompt(body: PostPromptModel):
-            import urllib
-            import requests
-
+        while True:
             try:
                 requests.get("http://0.0.0.0:8189/prompt")
+                break
             except (requests.ConnectionError, requests.Timeout) as e:
-                raise HTTPException(status_code=425, detail="Server not reachable yet")
+                continue
             except:
                 pass
 
+        bytes = self.bucket.blob(f"{input.session_id}/before").download_as_bytes()
+
+        pathlib.Path(f"/root/input/{input.session_id}").write_bytes(bytes)
+
+        workflow = self.workflow_json.copy()
+        workflow["11"]["inputs"]["seed"] = random.randint(1, 2**64)
+        workflow["1"]["inputs"]["image"] = input.session_id
+        workflow["9"]["inputs"]["text"] += input.prompt
+
+        data = json.dumps({"prompt": workflow, "client_id": input.session_id}).encode(
+            "utf-8"
+        )
+
+        response = urllib.request.Request(f"http://0.0.0.0:8189/prompt", data=data)
+        result = json.loads(urllib.request.urlopen(response).read())
+
+        prompt_id = result["prompt_id"]
+
+        doc_ref = self.db.collection("records").document(input.session_id)
+        doc_ref.set(
+            {
+                "create_at": firestore.SERVER_TIMESTAMP,
+                "prompt_id": prompt_id,
+                "prompt": input.prompt,
+                "status": "started",
+                "progress": 0,
+            }
+        )
+
+        ws = websocket.WebSocket()
+        while True:
             try:
-                bytes = admin.download_bytes(f"{body.session_id}/before")
-                pathlib.Path(f"/root/input/{body.session_id}").write_bytes(bytes)
-                print(f"{body.session_id}/before image successfully downloaded")
-            except ResourceNotFound as e:
-                print(f"Error downloading {body.session_id}/before image: {e}")
-                return HTTPException(status_code=404, detail=ResourceNotFound.cause)
+                ws.connect(f"ws://0.0.0.0:8189/ws?clientId={input.session_id}")
+                break
+            except ConnectionRefusedError:
+                time.sleep(1)
 
-            workflow_data = workflow_json.copy()
-            workflow_data["11"]["inputs"]["seed"] = random.randint(1, 2**64)
-            workflow_data["1"]["inputs"]["image"] = body.session_id
-            workflow_data["9"]["inputs"]["text"] += body.prompt
+        images_output = None
+        current_node = ""
+        while True:
+            out = ws.recv()
+            if isinstance(out, str):
+                message = json.loads(out)
 
-            data = json.dumps(
-                {"prompt": workflow_data, "client_id": websocket_client_id}
-            ).encode("utf-8")
-            response = urllib.request.Request(f"http://0.0.0.0:8189/prompt", data=data)
-            result = json.loads(urllib.request.urlopen(response).read())
-            print(f"Queued workflow {result['prompt_id']}")
+                if message["type"] == "executing":
+                    data = message["data"]
 
-            return result["prompt_id"]
+                    if data.get("prompt_id") and data.get("prompt_id") == prompt_id:
+                        if data["node"] is None:
+                            doc_ref.update({"status": "executed"})
+                            break
+                        else:
+                            current_node = data["node"]
 
-        @fastapi.websocket("/prompt")
-        async def proxy_websocket(websocket: WebSocket):
-            import websockets
-            import asyncio
+                elif message["type"] == "progress":
+                    data = message["data"]
 
-            await websocket.accept()
+                    if (
+                        data.get("prompt_id")
+                        and data.get("prompt_id") == prompt_id
+                        and data["node"] == "11"
+                    ):
+                        doc_ref.update({"progress": data["value"], "status": "pending"})
+            else:
+                if current_node == "74":
+                    images_output = out[8:]
 
-            try:
-                async with websockets.connect(
-                    f"ws://0.0.0.0:8189/ws?clientId={websocket_client_id}",
-                    max_size=1048576 * 3,
-                ) as target_ws:
+        self.bucket.blob(f"{input.session_id}/after").upload_from_string(
+            images_output, content_type="image/png"
+        )
+        doc_ref.update({"status": "completed"})
+        result = base64.b64encode(images_output).decode()
 
-                    async def receive_from_client():
-                        try:
-                            while True:
-                                data = await websocket.receive_text()
-                                await target_ws.send(data)
-                        except Exception as e:
-                            print(f"Client disconnected: {e}")
-                            await target_ws.close()
+        return f"data:image/png;base64,{result}"
 
-                    async def send_to_client():
-                        try:
-                            while True:
-                                out = await target_ws.recv()
-                                if isinstance(out, str):
-                                    data = json.loads(out)
-                                    await websocket.send_json(data)
-                                else:
-                                    await websocket.send_bytes(out)
-                        except Exception as e:
-                            print(f"Server disconnected or error: {e}")
-                            await websocket.close()
 
-                    receive_task = asyncio.create_task(receive_from_client())
-                    send_task = asyncio.create_task(send_to_client())
+@app.function(
+    gpu=False,
+    image=image,
+    allow_concurrent_inputs=100,
+    container_idle_timeout=60 * 15,  # 15 minutes
+    secrets=[modal.Secret.from_name("googlecloud-secret")],
+)
+@modal.asgi_app()
+def api():
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
 
-                    await asyncio.wait(
-                        [receive_task, send_task], return_when=asyncio.FIRST_COMPLETED
-                    )
-            except Exception as e:
-                await websocket.close()
-                print(f"WebSocket connection error: {e}")
+    fastapi = FastAPI()
+    fastapi.add_middleware(
+        CORSMiddleware,
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+        allow_origins=["*"],
+    )
 
-        return fastapi
+    service_account_info = json.loads(os.environ["SERVICE_ACCOUNT_JSON"])
+    cred = credentials.Certificate(service_account_info)
+    firebase = initialize_app(
+        cred,
+        options={"storageBucket": "wesmile-photobooth.appspot.com"},
+    )
+    bucket = storage.bucket(app=firebase)
+
+    ComfyUI = modal.Cls.lookup("comfy-api", "ComfyUI")
+    comfyui = ComfyUI()
+
+    @fastapi.get("/blob/{blob_name:path}")
+    def get_presigned_url(blob_name: str):
+        import datetime
+
+        return bucket.blob(blob_name).generate_signed_url(
+            expiration=datetime.timedelta(minutes=30), method="GET"
+        )
+
+    @fastapi.post("/job")
+    def on_job_post(input: InferModel):
+        job = comfyui.infer.spawn(input)
+        return job.object_id
+
+    @fastapi.get("/job/{job_id}")
+    def on_get_job(job_id: str):
+        function_call = modal.functions.FunctionCall.from_id(job_id)
+        try:
+            result = function_call.get(timeout=60)
+            return result
+        except TimeoutError:
+            return HTTPException(status_code=425, detail="Job is still processing")
+
+    return fastapi
