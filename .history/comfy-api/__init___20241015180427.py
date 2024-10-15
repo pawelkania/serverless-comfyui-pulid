@@ -139,10 +139,7 @@ class ComfyUI:
                     ):
                         doc_ref.update({"progress": data["value"], "status": "pending"})
             else:
-                if (
-                    workflow[current_node]
-                    and workflow[current_node]["class_type"] == "SaveImageWebsocket"
-                ):
+                if workflow[current_node] == "74":
                     images_output = out[8:]
 
         self.bucket.blob(f"{input.session_id}/after").upload_from_string(
