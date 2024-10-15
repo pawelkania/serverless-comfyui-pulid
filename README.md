@@ -14,7 +14,7 @@ To use this project, ensure you have the following:
    If you have not cloned the repository yet, do so by running:
 
 ```bash
-git clone [repository-url]
+git clone https://github.com/WeSmileBooth/serverless-comfyui
 cd serverless-comfy
 ```
 
@@ -22,7 +22,7 @@ cd serverless-comfy
    To deploy the application using Modal, run the following command:
 
 ```bash
-modal run comfy-api
+modal deploy comfy-api
 ```
 
 For more detailed information on deployment and the Modal platform, refer to the Modal.com documentation.
@@ -58,7 +58,7 @@ MODELS = [
    After updating the models, redeploy the project:
 
 ```bash
-modal run comfy-api
+modal deploy comfy-api
 ```
 
 ### Adding New Nodes
@@ -82,7 +82,7 @@ NODES = [
    Run the following command to rebuild the container and update the nodes:
 
 ```bash
-modal run comfy-api
+modal deploy comfy-api
 ```
 
 ### Modifying the Workflow
