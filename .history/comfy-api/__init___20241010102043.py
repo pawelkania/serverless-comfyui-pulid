@@ -8,7 +8,9 @@ import os
 
 from .container import image, gpu
 
-app = modal.App("comfy-api")
+app_name = "dev"
+
+app = modal.App(app_name)
 
 from pydantic import BaseModel
 
@@ -35,7 +37,7 @@ with image.imports():
         ),
     ],
 )
-class ComfyUI:
+class ComfyUI2:
     def __init__(self):
         service_account_info = json.loads(os.environ["SERVICE_ACCOUNT_JSON"])
         cred = credentials.Certificate(service_account_info)
@@ -64,7 +66,6 @@ class ComfyUI:
         import base64
         import websocket
         import requests
-        import copy
 
         while True:
             try:
@@ -79,10 +80,13 @@ class ComfyUI:
 
         pathlib.Path(f"/root/input/{input.session_id}").write_bytes(bytes)
 
-        workflow = copy.deepcopy(self.workflow_json)
+        workflow = self.workflow_json.copy()
         workflow["11"]["inputs"]["seed"] = random.randint(1, 2**64)
         workflow["1"]["inputs"]["image"] = input.session_id
         workflow["9"]["inputs"]["text"] += input.prompt
+
+        print(workflow["11"]["inputs"]["seed"])
+        print(workflow["9"]["inputs"]["text"])
 
         data = json.dumps({"prompt": workflow, "client_id": input.session_id}).encode(
             "utf-8"
@@ -181,7 +185,7 @@ def api():
     )
     bucket = storage.bucket(app=firebase)
 
-    ComfyUI = modal.Cls.lookup("comfy-api", "ComfyUI")
+    ComfyUI = modal.Cls.lookup(app_name, "ComfyUI2")
     comfyui = ComfyUI()
 
     @fastapi.get("/blob/{blob_name:path}")

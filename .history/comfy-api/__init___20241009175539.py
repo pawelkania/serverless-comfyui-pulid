@@ -64,7 +64,6 @@ class ComfyUI:
         import base64
         import websocket
         import requests
-        import copy
 
         while True:
             try:
@@ -79,7 +78,7 @@ class ComfyUI:
 
         pathlib.Path(f"/root/input/{input.session_id}").write_bytes(bytes)
 
-        workflow = copy.deepcopy(self.workflow_json)
+        workflow = self.workflow_json.copy()
         workflow["11"]["inputs"]["seed"] = random.randint(1, 2**64)
         workflow["1"]["inputs"]["image"] = input.session_id
         workflow["9"]["inputs"]["text"] += input.prompt
