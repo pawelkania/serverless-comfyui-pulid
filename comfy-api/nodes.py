@@ -5,6 +5,13 @@ NODES = [
     "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes",
     "https://github.com/cubiq/ComfyUI_IPAdapter_plus",
     "https://github.com/ltdrdata/ComfyUI-Manager",
+    
+    #needed for XZ nodes
+    "https://github.com/Acly/comfyui-inpaint-nodes"
+    "https://github.com/storyicon/comfyui_segment_anything", 
+    "https://github.com/IDEA-Research/Grounded-Segment-Anything",
+    "https://github.com/Acly/comfyui-inpaint-nodes",
+
 ]
 
 
