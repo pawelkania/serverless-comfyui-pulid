@@ -80,9 +80,9 @@ class ComfyUI:
         pathlib.Path(f"/root/input/{input.session_id}").write_bytes(bytes)
 
         workflow = copy.deepcopy(self.workflow_json)
-        workflow["11"]["inputs"]["seed"] = random.randint(1, 2**64)
-        workflow["1"]["inputs"]["image"] = input.session_id
-        workflow["9"]["inputs"]["text"] += input.prompt
+        workflow["3"]["inputs"]["seed"] = random.randint(1, 2**64)
+        workflow["108"]["inputs"]["image"] = input.session_id
+        workflow["7"]["inputs"]["text"] += input.prompt
 
         data = json.dumps({"prompt": workflow, "client_id": input.session_id}).encode(
             "utf-8"
