@@ -6,10 +6,6 @@ MODELS = [
         "directory": "/root/models/checkpoints",
     },
     {
-        "url": "https://huggingface.co/frankjoshua/zavychromaxl_v40/blob/974fc6338a34a2b40b2176e9e5d788109b0c1e8d/zavychromaxl_v40.safetensors",
-        "directory": "/root/models/checkpoints",
-    },
-    {
         "url": "https://huggingface.co/datasets/Gourieff/ReActor/resolve/main/models/inswapper_128.onnx",
         "directory": "/root/models/insightface",
     },

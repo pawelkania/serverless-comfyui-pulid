@@ -5,25 +5,6 @@ NODES = [
     "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes",
     "https://github.com/cubiq/ComfyUI_IPAdapter_plus",
     "https://github.com/ltdrdata/ComfyUI-Manager",
-    
-    #needed for XZ nodes
-    "https://github.com/Acly/comfyui-inpaint-nodes"
-    "https://github.com/storyicon/comfyui_segment_anything", 
-    "https://github.com/IDEA-Research/Grounded-Segment-Anything",
-
-    
-    "https://github.com/WASasquatch/was-node-suite-comfyui",
-    "https://github.com/sipherxyz/comfyui-art-venture",
-    "https://github.com/kijai/ComfyUI-KJNodes",
-    "https://github.com/shadowcz007/comfyui-mixlab-nodes",
-    "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
-    "https://github.com/pythongosssss/ComfyUI-Custom-Scripts"
-    "https://github.com/twri/sdxl_prompt_styler"
-    "https://github.com/rgthree/rgthree-comfy"
-
-    "https://github.com/KoreTeknology/ComfyUI-Universal-Styler",
-    
-
 ]
 
 
