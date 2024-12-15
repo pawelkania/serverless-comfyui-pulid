@@ -94,9 +94,10 @@ class ComfyUI:
         prompt_id = result["prompt_id"]
 
         doc_ref = self.db.collection("records").document(input.session_id)
-        doc_ref.set(
+        # TODO: This is changed to update to update the document
+        doc_ref.update(
             {
-                "create_at": firestore.SERVER_TIMESTAMP,
+                "created_at": firestore.SERVER_TIMESTAMP,
                 "prompt_id": prompt_id,
                 "prompt": input.prompt,
                 "status": "started",
