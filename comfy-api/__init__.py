@@ -5,17 +5,23 @@ import time
 import modal
 import random
 import os
+import datetime
 
 from .container import image, gpu
+from pydantic import BaseModel
 
 app = modal.App("comfy-api")
 
-from pydantic import BaseModel
 
 
 class InferModel(BaseModel):
     session_id: str
     prompt: str
+
+
+class JobResult(BaseModel):
+    base64_image: str
+    signed_url: str   
 
 
 with image.imports():
@@ -200,14 +206,33 @@ def api():
     def on_job_post(input: InferModel):
         job = comfyui.infer.spawn(input)
         return job.object_id
-
-    @fastapi.get("/job/{job_id}")
-    def on_get_job(job_id: str):
+    
+    @fastapi.get("/job/{job_id}/{session_id}")
+    def on_get_job(job_id: str, session_id: str):
         function_call = modal.functions.FunctionCall.from_id(job_id)
         try:
-            result = function_call.get(timeout=60)
-            return result
+            # Get the base64 result
+            base64_result = function_call.get(timeout=60)
+            
+            # Generate signed URL using the provided session_id
+            signed_url = bucket.blob(f"{session_id}/after").generate_signed_url(
+                expiration=datetime.timedelta(minutes=30),
+                method="GET"
+            )
+            
+            # Return both results
+            return JobResult(
+                base64_image=base64_result,
+                signed_url=signed_url
+            )
+            
         except TimeoutError:
-            return HTTPException(status_code=425, detail="Job is still processing")
+            raise HTTPException(status_code=425, detail="Job is still processing")
+        except Exception as e:
+            print(f"Error processing job {job_id}: {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Error processing job: {str(e)}"
+            )
 
     return fastapi
