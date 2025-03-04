@@ -13,7 +13,6 @@ from pydantic import BaseModel
 app = modal.App("comfy-api")
 
 
-
 class InferModel(BaseModel):
     session_id: str
     prompt: str
@@ -21,7 +20,7 @@ class InferModel(BaseModel):
 
 class JobResult(BaseModel):
     base64_image: str
-    signed_url: str   
+    signed_url: str
 
 
 with image.imports():
@@ -32,7 +31,7 @@ with image.imports():
     gpu=gpu,
     image=image,
     container_idle_timeout=60 * 15,  # 15 minutes
-    timeout=60 * 60,  # 1 hour
+    timeout=60 * 5,  # 1 minutes
     secrets=[modal.Secret.from_name("googlecloud-secret")],
     mounts=[
         modal.Mount.from_local_file(
@@ -206,33 +205,28 @@ def api():
     def on_job_post(input: InferModel):
         job = comfyui.infer.spawn(input)
         return job.object_id
-    
+
     @fastapi.get("/job/{job_id}/{session_id}")
     def on_get_job(job_id: str, session_id: str):
         function_call = modal.functions.FunctionCall.from_id(job_id)
         try:
             # Get the base64 result
             base64_result = function_call.get(timeout=60)
-            
+
             # Generate signed URL using the provided session_id
             signed_url = bucket.blob(f"{session_id}/after").generate_signed_url(
-                expiration=datetime.timedelta(minutes=30),
-                method="GET"
+                expiration=datetime.timedelta(minutes=30), method="GET"
             )
-            
+
             # Return both results
-            return JobResult(
-                base64_image=base64_result,
-                signed_url=signed_url
-            )
-            
+            return JobResult(base64_image=base64_result, signed_url=signed_url)
+
         except TimeoutError:
             raise HTTPException(status_code=425, detail="Job is still processing")
         except Exception as e:
             print(f"Error processing job {job_id}: {str(e)}")
             raise HTTPException(
-                status_code=500, 
-                detail=f"Error processing job: {str(e)}"
+                status_code=500, detail=f"Error processing job: {str(e)}"
             )
 
     return fastapi
