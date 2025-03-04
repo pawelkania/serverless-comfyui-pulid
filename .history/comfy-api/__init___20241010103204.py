@@ -5,22 +5,19 @@ import time
 import modal
 import random
 import os
-import datetime
 
 from .container import image, gpu
-from pydantic import BaseModel
 
-app = modal.App("comfy-api")
+app_name = "dev"
+
+app = modal.App(app_name)
+
+from pydantic import BaseModel
 
 
 class InferModel(BaseModel):
     session_id: str
     prompt: str
-
-
-class JobResult(BaseModel):
-    base64_image: str
-    signed_url: str
 
 
 with image.imports():
@@ -31,7 +28,7 @@ with image.imports():
     gpu=gpu,
     image=image,
     container_idle_timeout=60 * 15,  # 15 minutes
-    timeout=60 * 5,  # 1 minutes
+    timeout=60 * 60,  # 1 hour
     secrets=[modal.Secret.from_name("googlecloud-secret")],
     mounts=[
         modal.Mount.from_local_file(
@@ -40,7 +37,7 @@ with image.imports():
         ),
     ],
 )
-class ComfyUI:
+class ComfyUI2:
     def __init__(self):
         service_account_info = json.loads(os.environ["SERVICE_ACCOUNT_JSON"])
         cred = credentials.Certificate(service_account_info)
@@ -89,6 +86,9 @@ class ComfyUI:
         workflow["1"]["inputs"]["image"] = input.session_id
         workflow["9"]["inputs"]["text"] += input.prompt
 
+        print(workflow["11"]["inputs"]["seed"])
+        print(workflow["9"]["inputs"]["text"])
+
         data = json.dumps({"prompt": workflow, "client_id": input.session_id}).encode(
             "utf-8"
         )
@@ -99,10 +99,9 @@ class ComfyUI:
         prompt_id = result["prompt_id"]
 
         doc_ref = self.db.collection("records").document(input.session_id)
-        # TODO: This is changed to update to update the document
-        doc_ref.update(
+        doc_ref.set(
             {
-                "created_at": firestore.SERVER_TIMESTAMP,
+                "create_at": firestore.SERVER_TIMESTAMP,
                 "prompt_id": prompt_id,
                 "prompt": input.prompt,
                 "status": "started",
@@ -145,10 +144,7 @@ class ComfyUI:
                     ):
                         doc_ref.update({"progress": data["value"], "status": "pending"})
             else:
-                if (
-                    workflow[current_node]
-                    and workflow[current_node]["class_type"] == "SaveImageWebsocket"
-                ):
+                if current_node == "74":
                     images_output = out[8:]
 
         self.bucket.blob(f"{input.session_id}/after").upload_from_string(
@@ -190,7 +186,7 @@ def api():
     )
     bucket = storage.bucket(app=firebase)
 
-    ComfyUI = modal.Cls.lookup("comfy-api", "ComfyUI")
+    ComfyUI = modal.Cls.lookup(app_name, "ComfyUI2")
     comfyui = ComfyUI()
 
     @fastapi.get("/blob/{blob_name:path}")
@@ -206,27 +202,13 @@ def api():
         job = comfyui.infer.spawn(input)
         return job.object_id
 
-    @fastapi.get("/job/{job_id}/{session_id}")
-    def on_get_job(job_id: str, session_id: str):
+    @fastapi.get("/job/{job_id}")
+    def on_get_job(job_id: str):
         function_call = modal.functions.FunctionCall.from_id(job_id)
         try:
-            # Get the base64 result
-            base64_result = function_call.get(timeout=60)
-
-            # Generate signed URL using the provided session_id
-            signed_url = bucket.blob(f"{session_id}/after").generate_signed_url(
-                expiration=datetime.timedelta(minutes=30), method="GET"
-            )
-
-            # Return both results
-            return JobResult(base64_image=base64_result, signed_url=signed_url)
-
+            result = function_call.get(timeout=60)
+            return result
         except TimeoutError:
-            raise HTTPException(status_code=425, detail="Job is still processing")
-        except Exception as e:
-            print(f"Error processing job {job_id}: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error processing job: {str(e)}"
-            )
+            return HTTPException(status_code=425, detail="Job is still processing")
 
     return fastapi

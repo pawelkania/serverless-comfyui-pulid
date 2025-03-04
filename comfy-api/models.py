@@ -1,3 +1,5 @@
+import pathlib
+
 MODELS = [
     {
         "url": "https://huggingface.co/Yabo/SDXL_LoRA/resolve/main/dreamshaperXL_alpha2Xl10.safetensors",
@@ -43,14 +45,6 @@ MODELS = [
         "url": "https://huggingface.co/lllyasviel/Annotators/resolve/main/facenet.pth",
         "directory": "/root/custom_nodes/comfyui_controlnet_aux/ckpts/lllyasviel/Annotators",
     },
-    {
-        "url": "https://huggingface.co/misri/realismEngineSDXL_v30VAE/resolve/main/realismEngineSDXL_v30VAE.safetensors",
-        "directory": "/root/models/checkpoints",
-    },
-    {
-        "url": "https://huggingface.co/frankjoshua/zavychromaxl_v40/resolve/main/zavychromaxl_v40.safetensors",
-        "directory": "/root/models/checkpoints",
-    },
     # ipadapter
     {
         "url": "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors",
@@ -60,22 +54,7 @@ MODELS = [
         "url": "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors",
         "directory": "/root/models/ipadapter",
     },
-    {
-        "url": "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors",
-        "directory": "/root/models/ipadapter",
-    },
-    # inpaint
-    {
-        "url": "https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/fooocus_inpaint_head.pth",
-        "directory": "/root/models/inpaint",
-    },
-    {
-        "url": "https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/inpaint_v26.fooocus.patch",
-        "directory": "/root/models/inpaint",
-    },
 ]
-
-import pathlib
 
 
 def download_checkpoints():
