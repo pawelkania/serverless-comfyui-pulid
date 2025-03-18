@@ -30,15 +30,9 @@ with image.imports():
 @app.cls(
     gpu=gpu,
     image=image,
-    container_idle_timeout=60 * 15,  # 15 minutes
-    timeout=60 * 5,  # 1 minutes
+    container_idle_timeout=60 * 10,  # 10 minutes
+    timeout=60 * 2,  # 2 minutes
     secrets=[modal.Secret.from_name("googlecloud-secret")],
-    mounts=[
-        modal.Mount.from_local_file(
-            local_path=(pathlib.Path(__file__).parent / "workflow_api.json"),
-            remote_path="/root/workflow_api.json",
-        ),
-    ],
 )
 class ComfyUI:
     def __init__(self):
@@ -52,7 +46,7 @@ class ComfyUI:
         self.db = firestore.client(app=firebase)
 
         self.workflow_json = json.loads(
-            (pathlib.Path(__file__).parent / "workflow_api.json").read_text()
+            pathlib.Path("/root/workflow_api.json").read_text()
         )
 
     def _run_comfyui_server(self, port=8188):
@@ -84,6 +78,13 @@ class ComfyUI:
 
         pathlib.Path(f"/root/input/{input.session_id}").write_bytes(bytes)
 
+        # Create a client-side timestamp as a dictionary
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        start_time = {
+            'timestamp': now_utc.timestamp(),
+            'iso': now_utc.isoformat()
+        }
+
         workflow = copy.deepcopy(self.workflow_json)
         workflow["11"]["inputs"]["seed"] = random.randint(1, 2**64)
         workflow["1"]["inputs"]["image"] = input.session_id
@@ -99,16 +100,23 @@ class ComfyUI:
         prompt_id = result["prompt_id"]
 
         doc_ref = self.db.collection("records").document(input.session_id)
-        # TODO: This is changed to update to update the document
-        doc_ref.update(
-            {
-                "created_at": firestore.SERVER_TIMESTAMP,
-                "prompt_id": prompt_id,
-                "prompt": input.prompt,
-                "status": "started",
-                "progress": 0,
-            }
-        )
+
+        # Get the document
+        doc = doc_ref.get()
+        doc_data = doc.to_dict() if doc.exists else {}
+
+        # Initialize arrays and count if they don't exist
+        generation_count = doc_data.get('generation_count', 0)
+
+        # Update the document with new generation info
+        doc_ref.update({
+            "prompt_id": prompt_id,
+            "prompt": input.prompt,
+            "status": "started",
+            "progress": 0,
+            "generation_count": generation_count + 1,  # Increment by 1
+            "generation_start_times": firestore.ArrayUnion([start_time])  # Add new start time
+        }) 
 
         ws = websocket.WebSocket()
         while True:
@@ -154,7 +162,18 @@ class ComfyUI:
         self.bucket.blob(f"{input.session_id}/after").upload_from_string(
             images_output, content_type="image/png"
         )
-        doc_ref.update({"status": "completed"})
+
+        # Create end timestamp in the same format
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        end_time = {
+            'timestamp': now_utc.timestamp(),
+            'iso': now_utc.isoformat()
+        }
+        
+        doc_ref.update({
+            "status": "completed",
+            "generation_end_times": firestore.ArrayUnion([end_time])  # Add new end time
+        })
         result = base64.b64encode(images_output).decode()
 
         return f"data:image/png;base64,{result}"

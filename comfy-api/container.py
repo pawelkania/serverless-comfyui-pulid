@@ -1,4 +1,5 @@
 from modal import Image
+import pathlib
 
 from .models import download_checkpoints
 from .nodes import download_nodes
@@ -6,6 +7,7 @@ from .nodes import download_nodes
 commit_sha = "2a02546e2085487d34920e5b5c9b367918531f32"
 gpu = "h100"
 
+# Define the image with correct configuration
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.11")
     .apt_install("git", "git-lfs", "libgl1-mesa-glx", "libglib2.0-0", "unzip", "clang")
@@ -33,5 +35,9 @@ image = (
     .run_commands(
         "cd /root/models/insightface && gdown https://drive.google.com/uc?id=1qXsQJ8ZT42_xSmWIYy85IcidpiZudOCB -O buffalo_l.zip",
         "cd /root/models/insightface && unzip buffalo_l.zip -d models",
+    )
+    .add_local_file(
+        local_path=str(pathlib.Path(__file__).parent / "workflow_api.json"),
+        remote_path="/root/workflow_api.json"
     )
 )
