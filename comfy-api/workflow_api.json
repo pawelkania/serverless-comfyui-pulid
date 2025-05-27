@@ -1,7 +1,153 @@
 {
-	"1": {
+	"108": {
 		"inputs": {
-			"image": "test.png",
+			"vae_name": "ae.safetensors"
+		},
+		"class_type": "VAELoader",
+		"_meta": {
+			"title": "Load VAE"
+		}
+	},
+	"109": {
+		"inputs": {
+			"sampler_name": "euler"
+		},
+		"class_type": "KSamplerSelect",
+		"_meta": {
+			"title": "KSamplerSelect"
+		}
+	},
+	"111": {
+		"inputs": {
+			"noise_seed": 965775623502535
+		},
+		"class_type": "RandomNoise",
+		"_meta": {
+			"title": "RandomNoise"
+		}
+	},
+	"114": {
+		"inputs": {
+			"pulid_file": "pulid_flux_v0.9.1.safetensors"
+		},
+		"class_type": "PulidFluxModelLoader",
+		"_meta": {
+			"title": "Load PuLID Flux Model"
+		}
+	},
+	"119": {
+		"inputs": {},
+		"class_type": "PulidFluxEvaClipLoader",
+		"_meta": {
+			"title": "Load Eva Clip (PuLID Flux)"
+		}
+	},
+	"123": {
+		"inputs": {
+			"clip_name1": "t5xxl_fp8_e4m3fn_scaled_flux.safetensors",
+			"clip_name2": "clip_l_flux.safetensors",
+			"type": "flux",
+			"device": "default"
+		},
+		"class_type": "DualCLIPLoader",
+		"_meta": {
+			"title": "DualCLIPLoader"
+		}
+	},
+	"124": {
+		"inputs": {
+			"provider": "CUDA"
+		},
+		"class_type": "PulidFluxInsightFaceLoader",
+		"_meta": {
+			"title": "Load InsightFace (PuLID Flux)"
+		}
+	},
+	"175": {
+		"inputs": {
+			"samples": [
+				"236",
+				0
+			],
+			"vae": [
+				"252",
+				0
+			]
+		},
+		"class_type": "VAEDecode",
+		"_meta": {
+			"title": "VAE Decode"
+		}
+	},
+	"1000": {
+		"inputs": {
+			"images": [
+				"175",
+				0
+			]
+		},
+		"class_type": "SaveImageWebsocket",
+		"_meta": {
+			"title": "SaveImageWebsocket"
+		}
+	},
+
+
+	"209": {
+		"inputs": {
+			"strength": 0.6,
+			"start_percent": 0,
+			"end_percent": 0.7000000000000001,
+			"positive": [
+				"384",
+				0
+			],
+			"negative": [
+				"211",
+				0
+			],
+			"control_net": [
+				"210",
+				0
+			],
+			"image": [
+				"366",
+				0
+			],
+			"vae": [
+				"252",
+				0
+			]
+		},
+		"class_type": "ControlNetApplyAdvanced",
+		"_meta": {
+			"title": "Apply ControlNet"
+		}
+	},
+	"210": {
+		"inputs": {
+			"control_net_name": "FLUX.1-dev-ControlNet-Union-Pro-2.0-fp8.safetensors"
+		},
+		"class_type": "ControlNetLoader",
+		"_meta": {
+			"title": "Load ControlNet Model"
+		}
+	},
+	"211": {
+		"inputs": {
+			"conditioning": [
+				"384",
+				0
+			]
+		},
+		"class_type": "ConditioningZeroOut",
+		"_meta": {
+			"title": "ConditioningZeroOut"
+		}
+	},
+	"232": {
+		"inputs": {
+			"image": "ComfyUI_temp_zlnat_00037_.png",
 			"upload": "image"
 		},
 		"class_type": "LoadImage",
@@ -9,228 +155,549 @@
 			"title": "Load Image"
 		}
 	},
-	"5": {
+	"236": {
 		"inputs": {
-			"ckpt_name": "dreamshaperXL_alpha2Xl10.safetensors"
+			"noise": [
+				"111",
+				0
+			],
+			"guider": [
+				"237",
+				0
+			],
+			"sampler": [
+				"109",
+				0
+			],
+			"sigmas": [
+				"239",
+				0
+			],
+			"latent_image": [
+				"322",
+				0
+			]
 		},
-		"class_type": "CheckpointLoaderSimple",
+		"class_type": "SamplerCustomAdvanced",
 		"_meta": {
-			"title": "Load Checkpoint"
+			"title": "SamplerCustomAdvanced"
 		}
 	},
-	"9": {
+	"237": {
 		"inputs": {
-			"text": "",
-			"clip": ["5", 1]
+			"model": [
+				"421",
+				0
+			],
+			"conditioning": [
+				"238",
+				0
+			]
 		},
-		"class_type": "CLIPTextEncode",
+		"class_type": "BasicGuider",
 		"_meta": {
-			"title": "CLIP Text Encode (Prompt)"
+			"title": "BasicGuider"
 		}
 	},
-	"10": {
+	"238": {
 		"inputs": {
-			"text": "low quality, ugly, covered face, masked face, blurred background, people in background, ((Weapons, NSFW, Naked, Nude, tattoo)), text, watermark, logo",
-			"clip": ["5", 1]
+			"guidance": 3.5,
+			"conditioning": [
+				"209",
+				0
+			]
 		},
-		"class_type": "CLIPTextEncode",
+		"class_type": "FluxGuidance",
 		"_meta": {
-			"title": "CLIP Text Encode (Prompt)"
+			"title": "FluxGuidance"
 		}
 	},
-	"11": {
+	"239": {
 		"inputs": {
-			"seed": 671311003833018,
+			"scheduler": "beta",
 			"steps": 25,
-			"cfg": 6,
-			"sampler_name": "dpmpp_2m",
-			"scheduler": "normal",
 			"denoise": 1,
-			"model": ["65", 0],
-			"positive": ["69", 0],
-			"negative": ["69", 1],
-			"latent_image": ["12", 0]
+			"model": [
+				"250",
+				0
+			]
 		},
-		"class_type": "KSampler",
+		"class_type": "BasicScheduler",
 		"_meta": {
-			"title": "KSampler"
+			"title": "BasicScheduler"
 		}
 	},
-	"12": {
+	"250": {
+		"inputs": {
+			"max_shift": 1.1500000000000001,
+			"base_shift": 0.15000000000000002,
+			"width": [
+				"321",
+				0
+			],
+			"height": [
+				"321",
+				1
+			],
+			"model": [
+				"421",
+				0
+			]
+		},
+		"class_type": "ModelSamplingFlux",
+		"_meta": {
+			"title": "ModelSamplingFlux"
+		}
+	},
+	"251": {
+		"inputs": {
+			"device": "cuda:0",
+			"clip": [
+				"123",
+				0
+			]
+		},
+		"class_type": "OverrideCLIPDevice",
+		"_meta": {
+			"title": "Force/Set CLIP Device"
+		}
+	},
+	"252": {
+		"inputs": {
+			"device": "cuda:0",
+			"vae": [
+				"108",
+				0
+			]
+		},
+		"class_type": "OverrideVAEDevice",
+		"_meta": {
+			"title": "Force/Set VAE Device"
+		}
+	},
+	"278": {
 		"inputs": {
 			"width": 1024,
 			"height": 1024,
+			"interpolation": "lanczos",
+			"method": "pad",
+			"condition": "downscale if bigger",
+			"multiple_of": 0,
+			"image": [
+				"316",
+				0
+			]
+		},
+		"class_type": "ImageResize+",
+		"_meta": {
+			"title": "🔧 Image Resize"
+		}
+	},
+	"316": {
+		"inputs": {
+			"upscale_model": [
+				"317",
+				0
+			],
+			"image": [
+				"232",
+				0
+			]
+		},
+		"class_type": "ImageUpscaleWithModel",
+		"_meta": {
+			"title": "Upscale Image (using Model)"
+		}
+	},
+	"317": {
+		"inputs": {
+			"model_name": "2xNomosUni_span_multijpg_ldl.safetensors"
+		},
+		"class_type": "UpscaleModelLoader",
+		"_meta": {
+			"title": "Load Upscale Model"
+		}
+	},
+	"321": {
+		"inputs": {
+			"image": [
+				"278",
+				0
+			]
+		},
+		"class_type": "GetImageSize+",
+		"_meta": {
+			"title": "🔧 Get Image Size"
+		}
+	},
+	"322": {
+		"inputs": {
+			"width": [
+				"321",
+				0
+			],
+			"height": [
+				"321",
+				1
+			],
 			"batch_size": 1
 		},
-		"class_type": "EmptyLatentImage",
+		"class_type": "EmptySD3LatentImage",
 		"_meta": {
-			"title": "Empty Latent Image"
+			"title": "EmptySD3LatentImage"
 		}
 	},
-	"15": {
+	"338": {
 		"inputs": {
-			"samples": ["11", 0],
-			"vae": ["5", 2]
+			"text": "A cinematic, ultra-detailed depiction of ice hockey players standing confidently on a glistening rink. Grip their hockey stick firmly, poised and focused, as soft light from above reflects off the freshly scraped ice. A goalpost stands subtly in the background, with faint skate marks crisscrossing the surface. Frosted breath lingers in the cold air, and gentle flurries of snow fall under the glow of towering arena lights. wearing ice hockey outfit Rendered in a semi-impressionistic digital oil painting style, inspired by Edward Hopper’s quiet realism and vintage winter sports posters. The color palette features icy blues, deep shadows, and warm golden highlights from the lighting, creating contrast between cold surroundings and the quiet heat of determination. The scene feels focused, still, and powerful—capturing the calm before the storm, the solitude of sport, and the beauty of discipline on ice.Wearing Ice Hockey outfit. A dynamic scene featuring people holding two hockey sticks, posed with intensity and motion. A black hockey puck flies mid-air in front of them, caught in the moment just before impact or catch. The posture is athletic and focused, with subtle motion blur on the arms and puck to emphasize speed. Lighting is cool and sharp, reflecting off the icy surface below. The mood is energetic and competitive, frozen in a cinematic split-second of high-stakes play.\n\n\nRendered in A vibrant, cinematic scene rendered in a 1950s retro-futurist illustration style, inspired by the glamour and polish of Gil Elvgren’s pin-up paintings, combined with atomic-age science fiction optimism. The figure stands or leans in a playful, confident pose, wearing a vintage-futuristic outfit—chrome-trimmed jumpsuit, bubble helmet, or rocketpack with polished steel tubing and stylized shoulder pads. Skin glows with airbrushed softness, lips are ruby red, hair curled in classic waves with perfect highlights. The expression is flirtatious, bold, and cheerful—capturing the cheeky optimism of mid-century ad art. The background features sleek, curved architecture in pastel sky blue, mint green, and powder pink—glassy domes, silver launch pads, floating highways, or neon signage reading \"GALAXY TOURS\" or \"JET DINE.\" A flying saucer may hover in the distance, painted with chrome reflections. The lighting is bright, exaggeratedly clean, and full of high-gloss highlights—evoking mid-day sun and sci-fi studio lighting. Reflections gleam off metal surfaces, while shadows remain soft and cinematic. The entire image should feel playful, flirty, and full of idealized future nostalgia—as if pulled from a 1957 pulp sci-fi magazine or a Cold War-era Coca-Cola ad on Venus. Viewers should feel wide-eyed wonder, optimism, and retro charm—with a touch of kitsch and interplanetary glamour."
 		},
-		"class_type": "VAEDecode",
+		"class_type": "Text Multiline",
 		"_meta": {
-			"title": "VAE Decode"
+			"title": "Text Multiline"
 		}
 	},
-	"47": {
+	"352": {
 		"inputs": {
-			"images": ["62", 0]
+			"bbox_threshold": 0.5000000000000001,
+			"bbox_dilation": 120,
+			"crop_factor": 1.7000000000000002,
+			"drop_size": 10,
+			"sub_threshold": 0.5,
+			"sub_dilation": 0,
+			"sub_bbox_expansion": 0,
+			"sam_mask_hint_threshold": 0.7,
+			"post_dilation": 0,
+			"bbox_detector": [
+				"356",
+				0
+			],
+			"image": [
+				"278",
+				0
+			]
 		},
-		"class_type": "PreviewImage",
+		"class_type": "ImpactSimpleDetectorSEGS",
 		"_meta": {
-			"title": "Preview Image"
+			"title": "Simple Detector (SEGS)"
 		}
 	},
-	"59": {
+	"353": {
 		"inputs": {
-			"ipadapter_file": "ip-adapter-plus_sdxl_vit-h.safetensors"
+			"segs": [
+				"352",
+				0
+			]
 		},
-		"class_type": "IPAdapterModelLoader",
+		"class_type": "ImpactSEGSToMaskList",
 		"_meta": {
-			"title": "IPAdapter Model Loader"
+			"title": "SEGS to Mask List"
 		}
 	},
-	"62": {
+	"354": {
 		"inputs": {
-			"a": 6.283185307179586,
-			"bg_threshold": 0.1,
-			"resolution": 512,
-			"image": ["1", 0]
+			"mask": [
+				"353",
+				0
+			]
 		},
-		"class_type": "MiDaS-DepthMapPreprocessor",
+		"class_type": "MaskToImage",
 		"_meta": {
-			"title": "MiDaS Depth Map"
+			"title": "Convert Mask to Image"
 		}
 	},
-	"63": {
+	"356": {
 		"inputs": {
-			"input_faces_order": "left-right",
-			"input_faces_index": "0,1,2,3,4,5",
-			"detect_gender_input": "no",
-			"source_faces_order": "left-right",
-			"source_faces_index": "0,1,2,3,4,5",
-			"detect_gender_source": "no",
-			"console_log_level": 1
+			"model_name": "bbox/face_yolov8m.pt"
 		},
-		"class_type": "ReActorOptions",
+		"class_type": "UltralyticsDetectorProvider",
 		"_meta": {
-			"title": "ReActor 🌌 Options"
+			"title": "UltralyticsDetectorProvider"
 		}
 	},
-	"64": {
+	"362": {
 		"inputs": {
-			"enabled": true,
-			"swap_model": "inswapper_128.onnx",
-			"facedetection": "YOLOv5l",
-			"face_restore_model": "codeformer-v0.1.0.pth",
-			"face_restore_visibility": 1,
-			"codeformer_weight": 0.5,
-			"input_image": ["15", 0],
-			"source_image": ["1", 0],
-			"options": ["63", 0]
+			"force_resize_width": 0,
+			"force_resize_height": 0,
+			"image": [
+				"278",
+				0
+			],
+			"mask": [
+				"354",
+				0
+			]
 		},
-		"class_type": "ReActorFaceSwapOpt",
+		"class_type": "Cut By Mask",
 		"_meta": {
-			"title": "ReActor 🌌 Fast Face Swap [OPTIONS]"
+			"title": "Cut By Mask"
 		}
 	},
-	"65": {
-		"inputs": {
-			"weight": 0.4,
-			"weight_type": "composition",
-			"combine_embeds": "concat",
-			"start_at": 0,
-			"end_at": 1,
-			"embeds_scaling": "V only",
-			"model": ["5", 0],
-			"ipadapter": ["59", 0],
-			"image": ["1", 0],
-			"clip_vision": ["66", 0]
-		},
-		"class_type": "IPAdapterAdvanced",
-		"_meta": {
-			"title": "IPAdapter Advanced"
-		}
-	},
-	"66": {
-		"inputs": {
-			"clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
-		},
-		"class_type": "CLIPVisionLoader",
-		"_meta": {
-			"title": "Load CLIP Vision"
-		}
-	},
-	"68": {
-		"inputs": {
-			"switch_1": "On",
-			"controlnet_1": "control-lora-openposeXL2-rank256.safetensors",
-			"controlnet_strength_1": 0.6,
-			"start_percent_1": 0,
-			"end_percent_1": 0.6,
-			"switch_2": "On",
-			"controlnet_2": "control-lora-depth-rank256.safetensors",
-			"controlnet_strength_2": 0.7000000000000001,
-			"start_percent_2": 0,
-			"end_percent_2": 0.7000000000000001,
-			"switch_3": "Off",
-			"controlnet_3": "None",
-			"controlnet_strength_3": 1,
-			"start_percent_3": 0,
-			"end_percent_3": 1,
-			"image_1": ["73", 0],
-			"image_2": ["62", 0]
-		},
-		"class_type": "CR Multi-ControlNet Stack",
-		"_meta": {
-			"title": "🕹️ CR Multi-ControlNet Stack"
-		}
-	},
-	"69": {
-		"inputs": {
-			"positive": ["9", 0],
-			"negative": ["10", 0],
-			"cnet_stack": ["68", 0]
-		},
-		"class_type": "Apply ControlNet Stack",
-		"_meta": {
-			"title": "Apply ControlNet Stack"
-		}
-	},
-	"71": {
-		"inputs": {
-			"images": ["73", 0]
-		},
-		"class_type": "PreviewImage",
-		"_meta": {
-			"title": "Preview Image"
-		}
-	},
-	"73": {
+	"366": {
 		"inputs": {
 			"detect_hand": "enable",
 			"detect_body": "enable",
 			"detect_face": "enable",
-			"resolution": 512,
-			"image": ["1", 0]
+			"resolution": 1024,
+			"bbox_detector": "yolox_l.onnx",
+			"pose_estimator": "dw-ll_ucoco_384_bs5.torchscript.pt",
+			"scale_stick_for_xinsr_cn": "disable",
+			"image": [
+				"278",
+				0
+			]
 		},
-		"class_type": "OpenposePreprocessor",
+		"class_type": "DWPreprocessor",
 		"_meta": {
-			"title": "OpenPose Pose"
+			"title": "DWPose Estimator"
 		}
 	},
-	"74": {
+	"378": {
 		"inputs": {
-			"images": ["64", 0]
+			"text": "people. fbphoto."
 		},
-		"class_type": "SaveImageWebsocket",
+		"class_type": "Text Multiline",
 		"_meta": {
-			"title": "SaveImageWebsocket"
+			"title": "Text Multiline"
+		}
+	},
+	"381": {
+		"inputs": {
+			"delimiter": " ",
+			"clean_whitespace": "true",
+			"text_a": [
+				"420",
+				2
+			],
+			"text_b": [
+				"378",
+				0
+			],
+			"text_c": [
+				"338",
+				0
+			],
+			"text_d": ""
+		},
+		"class_type": "Text Concatenate",
+		"_meta": {
+			"title": "Text Concatenate"
+		}
+	},
+	"383": {
+		"inputs": {
+			"delimiter": " ",
+			"clean_whitespace": "true",
+			"text_a": [
+				"381",
+				0
+			],
+			"text_b": [
+				"425",
+				1
+			],
+			"text_c": "",
+			"text_d": ""
+		},
+		"class_type": "Text Concatenate",
+		"_meta": {
+			"title": "Text Concatenate"
+		}
+	},
+	"384": {
+		"inputs": {
+			"text": [
+				"383",
+				0
+			],
+			"clip": [
+				"251",
+				0
+			]
+		},
+		"class_type": "CLIPTextEncode",
+		"_meta": {
+			"title": "CLIP Text Encode (Prompt)"
+		}
+	},
+	"387": {
+		"inputs": {
+			"text": "You are a highly specialized AI assistant. Your sole purpose is to transform a scene.\nThe user will provide two inputs:\n1.  An image (which you can conceptually access to understand the *number and general arrangement of people*).\n2.  A textual user idea for a completely new scene, often including a style (e.g., \"3 people. on mars wearing astronaut suits.\" or \"2 people. on oil painting in van gogh style.\").\n\n**Your Mandate - Follow Strictly:**\n\n1.  **EXTRACT PEOPLE, DISCARD SCENE:** From the input image, only note the *number of people* and their general grouping (e.g., \"a couple,\" \"a group of three,\" \"a solitary person\"). **Completely and utterly IGNORE the original image's background, setting, original clothing, objects, and overall scene.** Your output MUST NOT describe, reference, or be influenced by any element of the original image's environment or the subjects' original attire.\n2.  **SYNTHESIZE NEW SCENE:** Based *exclusively* on the user's textual idea, construct a *brand new scene description*.\n3.  **TRANSPLANT & ADAPT PEOPLE:** Place the previously noted people into this new scene. Their attire, gear, pose, and context MUST be entirely transformed to fit the new scene described by the user. For example, if the user says \"on Mars wearing astronaut suits,\" the people are now astronauts on Mars. If the user says \"oil painting in Van Gogh style,\" they are figures within such a painting, rendered in that style.\n4.  **INFER TYPE & STYLE:** From the user's textual idea, infer the `new_image_type` (e.g., \"photograph,\" \"oil painting,\" \"digital art,\" \"illustration\") and `new_style` (e.g., \"realistic,\" \"Van Gogh,\" \"sci-fi,\" \"fantasy,\" \"impressionistic\"). If not explicitly stated, make a creative and fitting choice.\n5.  **OUTPUT REQUIREMENTS:**\n    *   Your output MUST be a valid JSON object conforming to the schema below.\n    *   The `user_idea` field in the JSON should be the exact text provided by the user for the new scene.\n    *   The `new_scene_description` field must be a concise (under 100 words) description of the *completely new scene* with the adapted people. It describes what one would see in this *new hypothetical image*.\n    *   DO NOT include any conversational preamble, explanations, apologies, or text outside the JSON structure.\n\n**PRIORITY:** The user's textual idea for the new scene is the absolute source of truth. Your primary function is creative synthesis of a new scene, not analysis of an existing one. Failure to generate a *new* scene based on the user's text and instead describing the original image is a critical failure of your core directive.\n\n**Expected JSON Output Schema:**\n\n    \"type\": \"object\",\n    \"properties\": \n      \"user_idea\": \n        \"type\": \"string\",\n        \"description\": \"The exact textual idea provided by the user for the new scene.\"\n      ,\n      \"new_scene_description\": \n        \"type\": \"string\",\n        \"description\": \"A concise description (under 100 words) of the completely new scene, featuring the people (number maintained from original) adapted to this new context (attire, gear, pose, etc.). This must NOT describe the original image's scene or original attire.\"\n      ,\n      \"new_image_type\":\n        \"type\": \"string\",\n        \"description\": \"The inferred type of the new image (e.g., 'photograph', 'oil painting', 'digital art', 'pixel art', 'sketch').\"\n      ,\n      \"new_style\":\n        \"type\": \"string\",\n        \"description\": \"The inferred artistic style of the new scene (e.g., 'realistic', 'Van Gogh', 'cyberpunk', 'impressionistic', 'cartoon', 'abstract').\"\n      \n    ,\n    \"required\": [\n      \"user_idea\",\n      \"new_scene_description\",\n      \"new_image_type\",\n      \"new_style\"\n    ]\n  "
+		},
+		"class_type": "Text Multiline",
+		"_meta": {
+			"title": "System message"
+		}
+	},
+	"393": {
+		"inputs": {
+			"text": "You are a highly specialized AI assistant. Your sole purpose is to transform a scene.\nThe user will provide two inputs:\n1.  An image (which you can conceptually access to understand the *number and general arrangement of people*).\n2.  A textual user idea for a completely new scene, often including a style.\n\n**Your Mandate - Follow Strictly:**\n\n1.  **EXTRACT PEOPLE, DISCARD SCENE:** From the input image, only note the *number of people* and their general grouping (e.g., \"a couple,\" \"a group of three,\" \"a solitary person\"). **Completely and utterly IGNORE the original image's background, setting, original clothing, objects, and overall scene.** Your output MUST NOT describe, reference, or be influenced by any element of the original image's environment or the subjects' original attire.\n2.  **SYNTHESIZE NEW SCENE:** Based *exclusively* on the user's textual idea, construct a *brand new scene description*.\n3.  **TRANSPLANT & ADAPT PEOPLE:** Place the previously noted people into this new scene. Their attire, gear, pose, and context MUST be entirely transformed to fit the new scene described by the user.\n4.  **INFER TYPE & STYLE:** From the user's textual idea, infer the `new_image_type` (e.g., \"photograph,\" \"oil painting,\" \"digital art,\" \"illustration\") and `new_style` (e.g., \"realistic,\" \"Van Gogh,\" \"sci-fi,\" \"fantasy,\" \"impressionistic\"). If not explicitly stated, make a creative and fitting choice.\n5.  **OUTPUT REQUIREMENTS:**\n    *   Your output MUST be a valid JSON object conforming to the schema below.\n    *   The `user_idea` field in the JSON should be the exact text provided by the user for the new scene.\n    *   The `new_scene_description` field must be a concise (under 100 words) description of the *completely new scene* with the adapted people. It describes what one would see in this *new hypothetical image*.\n    *   DO NOT include any conversational preamble, explanations, apologies, or text outside the JSON structure.\n\n**PRIORITY:** The user's textual idea for the new scene is the absolute source of truth. Your primary function is creative synthesis of a new scene, not analysis of an existing one. Failure to generate a *new* scene based on the user's text and instead describing the original image is a critical failure of your core directive.\n\n**Expected JSON Output Schema:**\n\n    \"type\": \"object\",\n    \"properties\": \n      \"user_idea\": \n        \"type\": \"string\",\n        \"description\": \"The exact textual idea provided by the user for the new scene.\"\n      ,\n      \"new_scene_description\": \n        \"type\": \"string\",\n        \"description\": \"A concise description (under 100 words) of the completely new scene, featuring the people (number maintained from original) adapted to this new context (attire, gear, pose, etc.). This must NOT describe the original image's scene or original attire.\"\n      ,\n      \"new_image_type\":\n        \"type\": \"string\",\n        \"description\": \"The inferred type of the new image (e.g., 'photograph', 'oil painting', 'digital art', 'pixel art', 'sketch').\"\n      ,\n      \"new_style\":\n        \"type\": \"string\",\n        \"description\": \"The inferred artistic style of the new scene (e.g., 'realistic', 'Van Gogh', 'cyberpunk', 'impressionistic', 'cartoon', 'abstract').\"\n      \n    ,\n    \"required\": [\n      \"user_idea\",\n      \"new_scene_description\",\n      \"new_image_type\",\n      \"new_style\"\n    ]\n  "
+		},
+		"class_type": "Text Multiline",
+		"_meta": {
+			"title": "System message"
+		}
+	},
+	"394": {
+		"inputs": {
+			"text": "# Scene Transformation Game: System Instructions\nYou are playing a scene transformation game. Your task is to:\n1. OBSERVE the people in the provided image (their number, appearance, identities)\n2. TRANSFER these exact same people into a completely new scene described in the user's text prompt\n3. ADAPT their clothing, poses, and surroundings to fit the new scene\n## Key Rules:\n- MAINTAIN the identities of the specific people shown in the image\n- CHANGE the scene, setting, clothing, and context based ONLY on the user's prompt\n- NEVER describe the original image's background or setting\n- ALWAYS place the people from the image into the NEW scene specified by the user\n- Adapt clothing and props to match the new scene logically\n- Match the exact number of people mentioned in the user's prompt with the people from the image\n## Response Format:\n- Return ONLY the JSON with no additional text or explanations\n- Keep scene descriptions under 100 words\n- Be vivid and specific in your descriptions\njson\nPost Impressionism\n\n## Examples of Correct Response:\nUser prompt: \"3 people. on mars wearing astronaut suits.\"\nResponse should describe the SAME 3 people from the uploaded image, now wearing astronaut suits on Mars.\nUser prompt: \"2 people. oil painting in van gogh style.\"\nResponse should describe the SAME 2 people from the uploaded image, now depicted in a Van Gogh style oil painting.\nRemember: Preserve the identities and characteristics of the people in the image, but completely transform their setting, clothing, and context according to the user's prompt."
+		},
+		"class_type": "Text Multiline",
+		"_meta": {
+			"title": "Text Multiline"
+		}
+	},
+	"410": {
+		"inputs": {
+			"text": "You are a highly specialized AI assistant. Your sole purpose is to transform a scene.\nThe user will provide two inputs:\n\nAn image (which you can conceptually access to understand the number and general arrangement of people).\nA textual user idea for a completely new scene, often including a style.\n\nYour Mandate - Follow Strictly:\n\nEXTRACT PEOPLE, DISCARD SCENE: From the input image, only note the number of people and their general grouping (e.g., \"a couple,\" \"a group of three,\" \"a solitary person\"). Completely and utterly IGNORE the original image's background, setting, original clothing, objects, and overall scene.\nSYNTHESIZE NEW SCENE: Based exclusively on the user's textual idea, construct a brand new scene description.\nTRANSPLANT & ADAPT PEOPLE: Place the previously noted people into this new scene. Their attire, gear, pose, and context MUST be entirely transformed to fit the new scene described by the user.\nINFER TYPE & STYLE: From the user's textual idea, infer the appropriate image type and style if not explicitly stated.\nOUTPUT REQUIREMENTS:\n\nYour output MUST be ONLY the new scene description in plain text (under 200 words).\nDO NOT include any conversational preamble, explanations, apologies, or any JSON structure.\nDO NOT refer to the original image's background, setting, clothing, objects, or scene.\n\n\nPRIORITY: The user's textual idea for the new scene is the absolute source of truth. Your primary function is creative synthesis of a new scene, not analysis of an existing one.\n\nOutput as:\nuser_idea:\"\"\nnew_scene_description:\"\"\nnew_image_type:\"\"\nnew_style:\"\""
+		},
+		"class_type": "Text Multiline",
+		"_meta": {
+			"title": "Text Multiline"
+		}
+	},
+	"420": {
+		"inputs": {
+			"masks": [
+				"353",
+				0
+			],
+			"images": [
+				"362",
+				0
+			]
+		},
+		"class_type": "AQ_MasksAndImagesAsList",
+		"_meta": {
+			"title": "AQ_MasksAndImagesAsList"
+		}
+	},
+	"421": {
+		"inputs": {
+			"weight": 1,
+			"start_at": 0,
+			"end_at": 1,
+			"model": [
+				"442",
+				0
+			],
+			"pulid_flux": [
+				"114",
+				0
+			],
+			"eva_clip": [
+				"119",
+				0
+			],
+			"face_analysis": [
+				"124",
+				0
+			],
+			"images": [
+				"420",
+				0
+			],
+			"attn_masks": [
+				"420",
+				1
+			]
+		},
+		"class_type": "AQ_multiface_ApplyPulidFlux",
+		"_meta": {
+			"title": "AQ_multiface_ApplyPulidFlux"
+		}
+	},
+	"425": {
+		"inputs": {
+			"gemini_api_key": "",
+			"model_selection": "gemini-2.0-flash-lite",
+			"custom_model": "gemma-3-12b-it",
+			"prompt": [
+				"381",
+				0
+			],
+			"system_message": [
+				"393",
+				0
+			],
+			"temperature": 1.0000000000000002,
+			"top_k": 64,
+			"top_p": 0.9500000000000002,
+			"enable_json": true,
+			"json_schema": "{\n    \"type\": \"object\",\n    \"properties\": {\n      \"user_idea\": {\n        \"type\": \"string\",\n        \"description\": \"The exact textual idea provided by the user for the new scene.\"\n      },\n      \"new_scene_description\": {\n        \"type\": \"string\",\n        \"description\": \"A concise description (under 100 words) of the completely new scene, featuring the people (number maintained from original) adapted to this new context (attire, gear, pose, etc.). This must NOT describe the original image's scene or original attire.\"\n      },\n      \"new_image_type\":{\n        \"type\": \"string\",\n        \"description\": \"The inferred type of the new image (e.g., 'photograph', 'oil painting', 'digital art', 'pixel art', 'sketch').\"\n      },\n      \"new_style\":{\n        \"type\": \"string\",\n        \"description\": \"The inferred artistic style of the new scene (e.g., 'realistic', 'Van Gogh', 'cyberpunk', 'impressionistic', 'cartoon', 'abstract').\"\n      }\n    },\n    \"required\": [\n      \"user_idea\",\n      \"new_scene_description\",\n      \"new_image_type\",\n      \"new_style\"\n    ]\n  }",
+			"result_template": "{json[new_scene_description]} in style {json[new_style]}, {json[new_image_type]}",
+			"image": [
+				"430",
+				0
+			]
+		},
+		"class_type": "AQ_Gemini",
+		"_meta": {
+			"title": "AQ_Gemini"
+		}
+	},
+	"427": {
+		"inputs": {
+			"text": [
+				"425",
+				0
+			]
+		},
+		"class_type": "ShowText|pysssss",
+		"_meta": {
+			"title": "Show Text 🐍"
+		}
+	},
+	"428": {
+		"inputs": {
+			"text_0": "\nHow to use AQ_Gemini node:\n1. Provide your Gemini API key in the 'gemini_api_key' field\n2. Select a model from the dropdown or choose 'custom' and enter your model name\n3. Enter your prompt in the 'prompt' field\n4. Customize the system message to control the assistant's behavior\n5. Optionally provide an image for image-based prompts\n6. For JSON output:\n   - Enable 'enable_json'\n   - Provide JSON schema in 'json_schema'\n   - Use 'result_template' to format the response\n\nAvailable Models:\n- Gemma Models: gemma-3-{1b,4b,12b,27b}-it\n- Gemini 2.5: flash-preview, pro-preview\n- Gemini 2.0: flash, flash-preview-image-generation, flash-lite, flash-live\n- Gemini 1.5: flash, flash-8b, pro\n- Special Models: gemini-embedding-exp, imagen-3.0, veo-2.0\n\nNote: If any error occurs, empty strings will be returned instead of raising an error.\n",
+			"text": [
+				"425",
+				2
+			]
+		},
+		"class_type": "ShowText|pysssss",
+		"_meta": {
+			"title": "Show Text 🐍"
+		}
+	},
+	"429": {
+		"inputs": {
+			"text": [
+				"425",
+				1
+			]
+		},
+		"class_type": "ShowText|pysssss",
+		"_meta": {
+			"title": "Show Text 🐍"
+		}
+	},
+	"430": {
+		"inputs": {
+			"width": 1024,
+			"height": 1024,
+			"interpolation": "lanczos",
+			"method": "pad",
+			"condition": "downscale if bigger",
+			"multiple_of": 0,
+			"image": [
+				"232",
+				0
+			]
+		},
+		"class_type": "ImageResize+",
+		"_meta": {
+			"title": "🔧 Image Resize"
+		}
+	},
+	"442": {
+		"inputs": {
+			"unet_name": "flux1-dev-fp8.safetensors",
+			"weight_dtype": "fp8_e4m3fn"
+		},
+		"class_type": "UNETLoader",
+		"_meta": {
+			"title": "Load Diffusion Model"
 		}
 	}
 }

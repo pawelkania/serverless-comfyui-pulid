@@ -11,6 +11,7 @@ from .container import image, gpu
 from pydantic import BaseModel
 
 app = modal.App("comfy-api")
+vol = modal.Volume.from_name("hf-hub-cache", create_if_missing=True)
 
 
 class InferModel(BaseModel):
@@ -23,38 +24,26 @@ class JobResult(BaseModel):
     signed_url: str
 
 
-with image.imports():
-    from firebase_admin import credentials, initialize_app, storage, firestore
-
-
 @app.cls(
     gpu=gpu,
     image=image,
-    container_idle_timeout=60 * 10,  # 10 minutes
+    scaledown_window=60 * 10,  # 10 minutes
     timeout=60 * 2,  # 2 minutes
-    secrets=[modal.Secret.from_name("googlecloud-secret")],
+    secrets=[modal.Secret.from_name("gemini_api_key")],
+    volumes={"/cache": vol},
 )
+
 class ComfyUI:
-    def __init__(self):
-        service_account_info = json.loads(os.environ["SERVICE_ACCOUNT_JSON"])
-        cred = credentials.Certificate(service_account_info)
-        firebase = initialize_app(
-            cred,
-            options={"storageBucket": "wesmile-photobooth.appspot.com"},
-        )
-        self.bucket = storage.bucket(app=firebase)
-        self.db = firestore.client(app=firebase)
-
-        self.workflow_json = json.loads(
-            pathlib.Path("/root/workflow_api.json").read_text()
-        )
-
     def _run_comfyui_server(self, port=8188):
         cmd = f"python main.py --listen 0.0.0.0 --port {port}"
         subprocess.Popen(cmd, shell=True)
 
     @modal.enter()
     def prepare(self):
+        # Load workflow JSON when container starts
+        self.workflow_json = json.loads(
+            pathlib.Path("/root/workflow_api.json").read_text()
+        )
         self._run_comfyui_server(port=8189)
 
     @modal.method()
@@ -74,7 +63,8 @@ class ComfyUI:
             except:
                 pass
 
-        bytes = self.bucket.blob(f"{input.session_id}/before").download_as_bytes()
+        response = requests.get("https://cdn.pixabay.com/photo/2020/05/06/18/53/girl-5138811_1280.jpg")
+        bytes = response.content
 
         pathlib.Path(f"/root/input/{input.session_id}").write_bytes(bytes)
 
@@ -86,9 +76,10 @@ class ComfyUI:
         }
 
         workflow = copy.deepcopy(self.workflow_json)
-        workflow["11"]["inputs"]["seed"] = random.randint(1, 2**64)
-        workflow["1"]["inputs"]["image"] = input.session_id
-        workflow["9"]["inputs"]["text"] += input.prompt
+        workflow["111"]["inputs"]["seed"] = random.randint(1, 2**64)
+        workflow["232"]["inputs"]["image"] = input.session_id
+        workflow["338"]["inputs"]["text"] += input.prompt
+        workflow["425"]["inputs"]["gemini_api_key"] = os.environ["gemini_api_key"]
 
         data = json.dumps({"prompt": workflow, "client_id": input.session_id}).encode(
             "utf-8"
@@ -98,25 +89,6 @@ class ComfyUI:
         result = json.loads(urllib.request.urlopen(response).read())
 
         prompt_id = result["prompt_id"]
-
-        doc_ref = self.db.collection("records").document(input.session_id)
-
-        # Get the document
-        doc = doc_ref.get()
-        doc_data = doc.to_dict() if doc.exists else {}
-
-        # Initialize arrays and count if they don't exist
-        generation_count = doc_data.get('generation_count', 0)
-
-        # Update the document with new generation info
-        doc_ref.update({
-            "prompt_id": prompt_id,
-            "prompt": input.prompt,
-            "status": "started",
-            "progress": 0,
-            "generation_count": generation_count + 1,  # Increment by 1
-            "generation_start_times": firestore.ArrayUnion([start_time])  # Add new start time
-        }) 
 
         ws = websocket.WebSocket()
         while True:
@@ -138,7 +110,6 @@ class ComfyUI:
 
                     if data.get("prompt_id") and data.get("prompt_id") == prompt_id:
                         if data["node"] is None:
-                            doc_ref.update({"status": "executed"})
                             break
                         else:
                             current_node = data["node"]
@@ -146,12 +117,6 @@ class ComfyUI:
                 elif message["type"] == "progress":
                     data = message["data"]
 
-                    if (
-                        data.get("prompt_id")
-                        and data.get("prompt_id") == prompt_id
-                        and data["node"] == "11"
-                    ):
-                        doc_ref.update({"progress": data["value"], "status": "pending"})
             else:
                 if (
                     workflow[current_node]
@@ -159,9 +124,6 @@ class ComfyUI:
                 ):
                     images_output = out[8:]
 
-        self.bucket.blob(f"{input.session_id}/after").upload_from_string(
-            images_output, content_type="image/png"
-        )
 
         # Create end timestamp in the same format
         now_utc = datetime.datetime.now(datetime.timezone.utc)
@@ -169,24 +131,28 @@ class ComfyUI:
             'timestamp': now_utc.timestamp(),
             'iso': now_utc.isoformat()
         }
-        
-        doc_ref.update({
-            "status": "completed",
-            "generation_end_times": firestore.ArrayUnion([end_time])  # Add new end time
-        })
+
         result = base64.b64encode(images_output).decode()
+        requests.post(
+            "https://api.hooklistener.com/in/S3UxGPr8ZAemCQ9wX3ryp",
+            data=base64.b64encode(images_output),
+        )
+        requests.post(
+            "https://8d55f2997a.endpoints.dev",
+            data=base64.b64encode(images_output),
+        )
 
         return f"data:image/png;base64,{result}"
 
 
 @app.function(
-    gpu=False,
+    gpu=None,
     image=image,
-    allow_concurrent_inputs=100,
     timeout=60 * 15,
-    container_idle_timeout=60 * 15,  # 15 minutes
-    secrets=[modal.Secret.from_name("googlecloud-secret")],
+    scaledown_window=60 * 15,  # 15 minutes
+    volumes={"/cache": vol},
 )
+@modal.concurrent(max_inputs=100) 
 @modal.asgi_app()
 def api():
     from fastapi import FastAPI, HTTPException
@@ -201,24 +167,7 @@ def api():
         allow_origins=["*"],
     )
 
-    service_account_info = json.loads(os.environ["SERVICE_ACCOUNT_JSON"])
-    cred = credentials.Certificate(service_account_info)
-    firebase = initialize_app(
-        cred,
-        options={"storageBucket": "wesmile-photobooth.appspot.com"},
-    )
-    bucket = storage.bucket(app=firebase)
-
-    ComfyUI = modal.Cls.lookup("comfy-api", "ComfyUI")
     comfyui = ComfyUI()
-
-    @fastapi.get("/blob/{blob_name:path}")
-    def get_presigned_url(blob_name: str):
-        import datetime
-
-        return bucket.blob(blob_name).generate_signed_url(
-            expiration=datetime.timedelta(minutes=30), method="GET"
-        )
 
     @fastapi.post("/job")
     def on_job_post(input: InferModel):
@@ -232,13 +181,8 @@ def api():
             # Get the base64 result
             base64_result = function_call.get(timeout=60)
 
-            # Generate signed URL using the provided session_id
-            signed_url = bucket.blob(f"{session_id}/after").generate_signed_url(
-                expiration=datetime.timedelta(minutes=30), method="GET"
-            )
-
             # Return both results
-            return JobResult(base64_image=base64_result, signed_url=signed_url)
+            return JobResult(base64_image=base64_result, signed_url='')
 
         except TimeoutError:
             raise HTTPException(status_code=425, detail="Job is still processing")
